@@ -11,7 +11,7 @@ HEIGHT = 640
 
 def get_detections(img,net):
     # 1.CONVERT IMAGE TO YOLO FORMAT
-    image = img.copy()
+    image = img #.copy()
     row, col, d = image.shape
 
     max_rc = max(row,col)
@@ -141,8 +141,8 @@ def add_tracked (track_id, plate):
 
 def extract_plate(frame):
     
-    ray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred_image = cv2.GaussianBlur(ray_image, (3, 3), 0)
+    gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blurred_image = cv2.GaussianBlur(gray_image, (3, 3), 0)
     _, threshold_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     inverted_image = cv2.bitwise_not(threshold_image)
 
@@ -154,11 +154,10 @@ def extract_plate(frame):
             # Annotate the text and its confidence level
             plate_final = plate_text["text"][i].replace(' ', '')
             #print(plate_final)
-            print(plate_final)
-            if plate_text['conf'][i] > 75 and len(plate_final) == 7:
-                text = f"{plate_final} (Confidence: {plate_text['conf'][i]}%)"
+            if plate_text['conf'][i] > 80 and len(plate_final) == 7:
+                text = f"{plate_final} {plate_text['conf'][i]}%)"
                 print(f"{text}")
-                return plate_final
+                return text
     
     return None
 
@@ -192,11 +191,11 @@ while cap.isOpened():
 
             #Escreve na imagem a placa + id
             #print(tracked)
-            cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+            cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
             if track_id in tracked:
-                cv2.putText(result_img, f"ID: {track_id} Placa: {tracked[track_id]}", (xmin, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (50, 130, 230), 1)
+                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
             else:
-                cv2.putText(result_img, f"ID: {track_id} Placa: ~", (xmin, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (50, 130, 230), 1)
+                cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
             
             
     #cv2.namedWindow("TESTE", cv2.WINDOW_NORMAL)
