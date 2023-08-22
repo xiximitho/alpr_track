@@ -9,6 +9,13 @@ net_plate = cv2.dnn.readNet('./model/placa.onnx')
 WIDTH =  640
 HEIGHT = 640
 
+
+
+def preprocess_image(frame):
+    # Realizar o pré-processamento da imagem (por exemplo, redimensionar, normalizar, etc.)
+    processed_frame = cv2.resize(frame, (416, 416))
+    return processed_frame
+
 def get_detections(img,net):
     # 1.CONVERT IMAGE TO YOLO FORMAT
     image = img #.copy()
@@ -42,9 +49,9 @@ def non_maximum_supression(input_image,detections):
         row = detections[i]
         confidence = row[4] # confidence of detecting license plate
 
-        if confidence > 0.4:
+        if confidence > 0.7:
             class_score = row[5] # probability score of license plate
-            if class_score > 0.2:
+            if class_score > 0.4:
                 cx, cy , w, h = row[0:4]
 
                 left = int((cx - 0.5*w)*x_factor)
@@ -61,7 +68,7 @@ def non_maximum_supression(input_image,detections):
     confidences_np = np.array(confidences).tolist()
 
     # 4.2 NMS
-    index = cv2.dnn.NMSBoxes(boxes_np,confidences_np,0.25,0.45)
+    index = cv2.dnn.NMSBoxes(boxes_np,confidences_np,0.25,0.7)
 
     return boxes_np, confidences_np, index
 
@@ -172,7 +179,7 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-
+    
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
     if detections_for_sort != []:
@@ -191,26 +198,18 @@ while cap.isOpened():
 
             #Escreve na imagem a placa + id
             #print(tracked)
+            '''
             cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
             if track_id in tracked:
                 cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
             else:
                 cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
             
-            
-    #cv2.namedWindow("TESTE", cv2.WINDOW_NORMAL)
-    #cv2.imshow("TESTE", result_img)
-    #cv2.waitKey(0)
     cv2.imshow("Frame", result_img)
 
     # Pressione 'q' para sair do loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-        
-
-        #cv2.namedWindow("TESTE", cv2.WINDOW_NORMAL)
-        #cv2.imshow("TESTE", result_img)
-        #cv2.waitKey(0)
-
-    # Mostrar o quadro de saída em uma janela
+        break'''
     
+# 🐕🐕🐕🐕🐕🐕🐕 
+print(tracked)
