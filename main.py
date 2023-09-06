@@ -1,3 +1,5 @@
+import re
+
 import cv2
 import numpy as np
 import pytesseract
@@ -13,7 +15,7 @@ HEIGHT = 640
 
 def preprocess_image(frame):
     # Realizar o pré-processamento da imagem (por exemplo, redimensionar, normalizar, etc.)
-    processed_frame = cv2.resize(frame, (416, 416))
+    processed_frame = cv2.resize(frame, (HEIGHT, WIDTH))
     return processed_frame
 
 def get_detections(img,net):
@@ -48,9 +50,10 @@ def non_maximum_supression(input_image,detections):
     for i in range(len(detections)):
         row = detections[i]
         confidence = row[4] # confidence of detecting license plate
-
+        
         if confidence > 0.7:
             class_score = row[5] # probability score of license plate
+            
             if class_score > 0.4:
                 cx, cy , w, h = row[0:4]
 
@@ -131,6 +134,8 @@ def yolo_prediction_plate(img, net):
         detection = [x_min, y_min, x_max, y_max, confidences_np[ind]]  # Append track ID
         detections_for_sort.append(detection)
 
+        
+
         cropped_detection = img[y_min:y_max, x_min:x_max]
         images.append(cropped_detection)
         
@@ -147,29 +152,50 @@ def add_tracked (track_id, plate):
     tracked[track_id] = plate
 
 def extract_plate(frame):
-    
+    copia = frame.copy()
     gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred_image = cv2.GaussianBlur(gray_image, (3, 3), 0)
+    blurred_image = gray_image
+    #blurred_image = cv2.GaussianBlur(gray_image, (1, 1), 0)
+    
+    # Aplica uma técnica de limiarização para binarizar a imagem
     _, threshold_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    inverted_image = cv2.bitwise_not(threshold_image)
+    '''
+    # Aplica um filtro de suavização Gaussiano para reduzir o ruído
+    kernel = np.ones((1, 1), np.uint8)
+    # Realize a operação de abertura para realçar as áreas pretas
+    opened_image = cv2.morphologyEx(threshold_image, cv2.MORPH_OPEN, kernel)
+    img_erode = cv2.erode(opened_image, kernel, iterations=1)
+    img_dilate = cv2.dilate(img_erode, kernel=kernel, iterations=1)
+    # Inverte as cores para tornar o texto branco e o fundo preto'''
+    
+    fator_reducao = 1.8
+    # Aplique a redução de cinza multiplicando todos os pixels pelo fator
+    imagem_reduzida = np.clip(blurred_image * fator_reducao, 0, 255).astype(np.uint8)
 
-    plate_text = pytesseract.image_to_data(inverted_image, output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c min_length=7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+    cv2.imshow("tg", imagem_reduzida)
+    cv2.waitKey(0)
 
+    #plate_str = pytesseract.image_to_string(imagem_reduzida,output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c min_length=7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+    #print("STR:: ", plate_str)
+    plate_text = pytesseract.image_to_data(imagem_reduzida, output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c min_length=7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     for i in range(len(plate_text["text"])):
         if plate_text["text"][i] != "" and int(plate_text["conf"][i]) > 0:
             #print(f"{plate_text['text'][i]} (Confidence: {plate_text['conf'][i]}%)")
             # Annotate the text and its confidence level
-            plate_final = plate_text["text"][i].replace(' ', '')
-            #print(plate_final)
-            if plate_text['conf'][i] > 80 and len(plate_final) == 7:
+            plate_final = re.sub(r'[^a-zA-Z0-9]', '', plate_text["text"][i])
+            if plate_text['conf'][i] > 30 and len(plate_final) == 7:
                 text = f"{plate_final} {plate_text['conf'][i]}%)"
                 print(f"{text}")
                 return text
     
     return None
 
+# Função para corrigir a orientação da imagem
+def corrigir_orientacao(imagem):
+    imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
+    return imagem_corrigida
 
-video_path = './videos/video-carro1.mp4'
+video_path = './videos/w2.mp4'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0
@@ -179,6 +205,9 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
+    
+    
+    #frame = corrigir_orientacao(frame)
     
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
@@ -191,25 +220,25 @@ while cap.isOpened():
 
             if not is_tracked(track_id):
                 plate_images = yolo_prediction_plate(result_img[ymin:ymax, xmin:xmax], net_plate)
+                
                 for plate_img in plate_images:
                     plate = extract_plate(frame=plate_img)
                     if plate is not None:
                         add_tracked(track_id, plate)
+        
 
             #Escreve na imagem a placa + id
-            #print(tracked)
-            '''
-            cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
             if track_id in tracked:
-                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
+                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             else:
-                cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 130, 230), 2)
-            
-    cv2.imshow("Frame", result_img)
+                cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
 
+    cv2.imshow("Frame", result_img)
+    #cv2.waitKey(0)
     # Pressione 'q' para sair do loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        break'''
+        break
     
-# 🐕🐕🐕🐕🐕🐕🐕 
 print(tracked)
