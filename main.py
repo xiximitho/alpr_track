@@ -20,6 +20,7 @@ def preprocess_image(frame):
 
 def get_detections(img,net):
     # 1.CONVERT IMAGE TO YOLO FORMAT
+    detections = []
     image = img #.copy()
     row, col, d = image.shape
 
@@ -28,10 +29,13 @@ def get_detections(img,net):
     input_image[0:row,0:col] = image
 
     # 2. GET PREDICTION FROM YOLO MODEL
-    blob = cv2.dnn.blobFromImage(input_image,1/255,(WIDTH,HEIGHT),swapRB=True,crop=False)
-    net.setInput(blob)
-    preds = net.forward()
-    detections = preds[0]
+    img_width, img_height, _ = img.shape
+
+    if img_width > 0 and img_height > 0:
+        blob = cv2.dnn.blobFromImage(input_image,1/255,(WIDTH,HEIGHT),swapRB=True,crop=False)
+        net.setInput(blob)
+        preds = net.forward()
+        detections = preds[0]
 
     return input_image, detections
 
@@ -151,44 +155,63 @@ def is_tracked (track_id) :
 def add_tracked (track_id, plate):
     tracked[track_id] = plate
 
+def extract_ocr(frame):
+    img = cv2.resize(frame, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    ret, img = cv2.threshold(img, 70, 255, cv2.THRESH_BINARY)
+
+    img = cv2.GaussianBlur(img, (5,5),0)
+
+    #saida = pytesseract.image_to_string(img, lang='eng', config=' -l eng --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-')
+    saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+    for i in range(len(saida["text"])):
+        if int(saida["conf"][i]) >= 0:
+
+            formatted = ''.join(e for e in saida["text"][i] if e.isalnum() or e == '-')
+            if len(formatted) == 7:
+                print(formatted, saida["conf"][i])
+                cv2.imshow('test', img)
+                cv2.waitKey(0)
+                return formatted
+        
+    return None
+
+
 def extract_plate(frame):
-    copia = frame.copy()
+    # Converte o quadro de vídeo em escala de cinza
     gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred_image = gray_image
-    #blurred_image = cv2.GaussianBlur(gray_image, (1, 1), 0)
-    
-    # Aplica uma técnica de limiarização para binarizar a imagem
-    _, threshold_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    '''
-    # Aplica um filtro de suavização Gaussiano para reduzir o ruído
-    kernel = np.ones((1, 1), np.uint8)
-    # Realize a operação de abertura para realçar as áreas pretas
-    opened_image = cv2.morphologyEx(threshold_image, cv2.MORPH_OPEN, kernel)
-    img_erode = cv2.erode(opened_image, kernel, iterations=1)
-    img_dilate = cv2.dilate(img_erode, kernel=kernel, iterations=1)
-    # Inverte as cores para tornar o texto branco e o fundo preto'''
-    
+
+    # Aplica um desfoque Gaussiano para suavizar a imagem
+    blurred_image = cv2.GaussianBlur(gray_image, (1, 1), 0)
+
+    # Define um fator de redução para o contraste da imagem
     fator_reducao = 1.8
-    # Aplique a redução de cinza multiplicando todos os pixels pelo fator
+
+    # Aplica a redução de contraste à imagem e garante que os valores dos pixels estejam no intervalo válido
     imagem_reduzida = np.clip(blurred_image * fator_reducao, 0, 255).astype(np.uint8)
+    
+    # Usa o Tesseract OCR para extrair texto da imagem reduzida
+    plate_text = pytesseract.image_to_data(imagem_reduzida, output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
 
-    cv2.imshow("tg", imagem_reduzida)
-    cv2.waitKey(0)
-
-    #plate_str = pytesseract.image_to_string(imagem_reduzida,output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c min_length=7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-    #print("STR:: ", plate_str)
-    plate_text = pytesseract.image_to_data(imagem_reduzida, output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c min_length=7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+    # Loop pelos resultados do reconhecimento de texto
     for i in range(len(plate_text["text"])):
+        # Verifica se o texto reconhecido não está vazio e a confiança é maior que zero
         if plate_text["text"][i] != "" and int(plate_text["conf"][i]) > 0:
-            #print(f"{plate_text['text'][i]} (Confidence: {plate_text['conf'][i]}%)")
-            # Annotate the text and its confidence level
+            # Remove caracteres não alfanuméricos da string reconhecida
             plate_final = re.sub(r'[^a-zA-Z0-9]', '', plate_text["text"][i])
+            print(plate_final)
+            # Verifica se a confiança é maior que 30 e se a string tem comprimento igual a 7
             if plate_text['conf'][i] > 30 and len(plate_final) == 7:
+                # Exibe o texto da placa e a confiança associada
                 text = f"{plate_final} {plate_text['conf'][i]}%)"
                 print(f"{text}")
-                return text
-    
+                return text  # Encerra a função e retorna o texto da placa
+
+    # Retorna None se nenhuma placa válida for encontrada
     return None
+
 
 # Função para corrigir a orientação da imagem
 def corrigir_orientacao(imagem):
@@ -206,9 +229,6 @@ while cap.isOpened():
     if not ret:
         break
     
-    
-    #frame = corrigir_orientacao(frame)
-    
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
     if detections_for_sort != []:
@@ -222,15 +242,15 @@ while cap.isOpened():
                 plate_images = yolo_prediction_plate(result_img[ymin:ymax, xmin:xmax], net_plate)
                 
                 for plate_img in plate_images:
-                    plate = extract_plate(frame=plate_img)
+                    #plate = extract_plate(frame=plate_img)
+                    plate = extract_ocr(frame=plate_img)
                     if plate is not None:
-                        add_tracked(track_id, plate)
-        
+                        add_tracked(track_id, plate)  # Adiciona o objeto rastreado
 
-            #Escreve na imagem a placa + id
+            # Escreve na imagem a placa e o ID do objeto rastreado
             if track_id in tracked:
-                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (100, 255, 0), 2)
+                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 255, 0), 2)
             else:
                 cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
@@ -240,5 +260,4 @@ while cap.isOpened():
     # Pressione 'q' para sair do loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-    
 print(tracked)
