@@ -11,13 +11,6 @@ net_plate = cv2.dnn.readNet('./model/placa.onnx')
 WIDTH =  640
 HEIGHT = 640
 
-
-
-def preprocess_image(frame):
-    # Realizar o pré-processamento da imagem (por exemplo, redimensionar, normalizar, etc.)
-    processed_frame = cv2.resize(frame, (HEIGHT, WIDTH))
-    return processed_frame
-
 def get_detections(img,net):
     # 1.CONVERT IMAGE TO YOLO FORMAT
     detections = []
@@ -79,25 +72,6 @@ def non_maximum_supression(input_image,detections):
 
     return boxes_np, confidences_np, index
 
-def drawings(image,boxes_np,confidences_np,index):
-    # 5. Drawings
-    for ind in index:
-        x,y,w,h =  boxes_np[ind]
-        bb_conf = confidences_np[ind]
-        conf_text = 'plate: {:.0f}%'.format(bb_conf*100)
-        #license_text = extract_text(image,boxes_np[ind])
-
-
-        cv2.rectangle(image,(x,y),(x+w,y+h),(255,0,255),2)
-        cv2.rectangle(image,(x,y-30),(x+w,y),(255,0,255),-1)
-        cv2.rectangle(image,(x,y+h),(x+w,y+h+25),(0,0,0),-1)
-
-
-        cv2.putText(image,conf_text,(x,y-10),cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,255,255),1)
-        #cv2.putText(image,license_text,(x,y+h+27),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),1)
-
-    return image
-
 def yolo_predictions(img, net, track_id_counter):
     # 1: Detecção
     input_image, detections = get_detections(img, net)
@@ -145,7 +119,6 @@ def yolo_prediction_plate(img, net):
         
     return images
 
-
 def is_tracked (track_id) :
     if track_id in tracked:
         return True
@@ -155,16 +128,13 @@ def is_tracked (track_id) :
 def add_tracked (track_id, plate):
     tracked[track_id] = plate
 
-def extract_ocr(frame):
+def extract_plate(frame):
+    
     img = cv2.resize(frame, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     ret, img = cv2.threshold(img, 70, 255, cv2.THRESH_BINARY)
-
     img = cv2.GaussianBlur(img, (5,5),0)
 
-    #saida = pytesseract.image_to_string(img, lang='eng', config=' -l eng --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-')
     saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     for i in range(len(saida["text"])):
         if int(saida["conf"][i]) >= 0:
@@ -172,48 +142,10 @@ def extract_ocr(frame):
             formatted = ''.join(e for e in saida["text"][i] if e.isalnum() or e == '-')
             if len(formatted) == 7:
                 print(formatted, saida["conf"][i])
-                cv2.imshow('test', img)
-                cv2.waitKey(0)
                 return formatted
         
     return None
 
-
-def extract_plate(frame):
-    # Converte o quadro de vídeo em escala de cinza
-    gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Aplica um desfoque Gaussiano para suavizar a imagem
-    blurred_image = cv2.GaussianBlur(gray_image, (1, 1), 0)
-
-    # Define um fator de redução para o contraste da imagem
-    fator_reducao = 1.8
-
-    # Aplica a redução de contraste à imagem e garante que os valores dos pixels estejam no intervalo válido
-    imagem_reduzida = np.clip(blurred_image * fator_reducao, 0, 255).astype(np.uint8)
-    
-    # Usa o Tesseract OCR para extrair texto da imagem reduzida
-    plate_text = pytesseract.image_to_data(imagem_reduzida, output_type=Output.DICT, config=' -l eng --oem 1 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-
-    # Loop pelos resultados do reconhecimento de texto
-    for i in range(len(plate_text["text"])):
-        # Verifica se o texto reconhecido não está vazio e a confiança é maior que zero
-        if plate_text["text"][i] != "" and int(plate_text["conf"][i]) > 0:
-            # Remove caracteres não alfanuméricos da string reconhecida
-            plate_final = re.sub(r'[^a-zA-Z0-9]', '', plate_text["text"][i])
-            print(plate_final)
-            # Verifica se a confiança é maior que 30 e se a string tem comprimento igual a 7
-            if plate_text['conf'][i] > 30 and len(plate_final) == 7:
-                # Exibe o texto da placa e a confiança associada
-                text = f"{plate_final} {plate_text['conf'][i]}%)"
-                print(f"{text}")
-                return text  # Encerra a função e retorna o texto da placa
-
-    # Retorna None se nenhuma placa válida for encontrada
-    return None
-
-
-# Função para corrigir a orientação da imagem
 def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
@@ -242,18 +174,17 @@ while cap.isOpened():
                 plate_images = yolo_prediction_plate(result_img[ymin:ymax, xmin:xmax], net_plate)
                 
                 for plate_img in plate_images:
-                    #plate = extract_plate(frame=plate_img)
-                    plate = extract_ocr(frame=plate_img)
+                    plate = extract_plate(frame=plate_img)
                     if plate is not None:
                         add_tracked(track_id, plate)  # Adiciona o objeto rastreado
 
             # Escreve na imagem a placa e o ID do objeto rastreado
             if track_id in tracked:
-                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (100, 255, 0), 2)
-                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 255, 0), 2)
+                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
+                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 220), 2)
             else:
-                cv2.putText(result_img, f"ID: {track_id} : ", (xmin, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                cv2.putText(result_img, f"ID: {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
 
     cv2.imshow("Frame", result_img)
     #cv2.waitKey(0)
