@@ -1,3 +1,4 @@
+import os.path
 import re
 
 import cv2
@@ -135,10 +136,8 @@ def extract_plate(frame):
     ret, img = cv2.threshold(img, 70, 255, cv2.THRESH_BINARY)
     img = cv2.GaussianBlur(img, (5,5),0)
 
-    cv2.imshow("asda",img)
-    cv2.waitKey(0)
     #-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
-    #saida = pytesseract.image_to_data(img, lang='eng', config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+    #saida = pytesseract.image_to_string(img, lang='eng', config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     
     #formatted = "".join(filter(str.isalnum, saida))
     #if len(formatted) == 7:
@@ -194,7 +193,8 @@ while cap.isOpened():
             if track_id in tracked:
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
                 cv2.putText(result_img, f"ID {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (10, 10,255), 2)
-                cv2.imwrite(f'{tracked[track_id]}' + '.png', result_img)
+                if not (os.path.isfile(f'./plates_extracted/{tracked[track_id]}' + '.png')):
+                    cv2.imwrite(f'./plates_extracted/{tracked[track_id]}' + '.png', result_img)
                 #cv2.waitKey(0)
             else:
                 cv2.putText(result_img, f"ID {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
