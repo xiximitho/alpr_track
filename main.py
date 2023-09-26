@@ -137,6 +137,14 @@ def extract_plate(frame):
 
     cv2.imshow("asda",img)
     cv2.waitKey(0)
+    #-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
+    #saida = pytesseract.image_to_data(img, lang='eng', config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+    
+    #formatted = "".join(filter(str.isalnum, saida))
+    #if len(formatted) == 7:
+    #    print(formatted)
+    #    return formatted
+        
     saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     print('extract_plate:' , saida["text"])    
     for i in range(len(saida["text"])):
@@ -146,14 +154,14 @@ def extract_plate(frame):
             if len(formatted) == 7:
                 print(formatted, saida["conf"][i])
                 return formatted
-        
+                
     return None
 
 def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
 
-video_path = './images/IMG_20230906_181640.jpg'
+video_path = './videos/w2.mp4'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0
@@ -163,7 +171,7 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-    frame = corrigir_orientacao(frame)
+    #frame = corrigir_orientacao(frame)
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
 
@@ -185,15 +193,15 @@ while cap.isOpened():
             # Escreve na imagem a placa e o ID do objeto rastreado
             if track_id in tracked:
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
-                cv2.putText(result_img, f"ID: {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 220), 2)
+                cv2.putText(result_img, f"ID {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (10, 10,255), 2)
                 cv2.imwrite(f'{tracked[track_id]}' + '.png', result_img)
                 #cv2.waitKey(0)
             else:
-                cv2.putText(result_img, f"ID: {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.putText(result_img, f"ID {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
 
 
-    cv2.imshow("Frame", result_img)
+    #cv2.imshow("Frame", result_img)
     #cv2.waitKey(0)
     # Pressione 'q' para sair do loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
