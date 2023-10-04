@@ -134,16 +134,11 @@ def add_tracked (track_id, plate):
 def extract_plate(frame):
     
     img = rotate_image(frame=frame)
-    #-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
-    #saida = pytesseract.image_to_string(img, lang='eng', config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-    
-    #formatted = "".join(filter(str.isalnum, saida))
-    #if len(formatted) == 7:
-    #    print(formatted)
-    #    return formatted
+    tess_config = r' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
+
     if img is not None:        
 
-        saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")   
+        saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=tess_config)   
         for i in range(len(saida["text"])):
             if int(saida["conf"][i]) >= 0:
 
