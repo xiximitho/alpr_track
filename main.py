@@ -191,12 +191,12 @@ while cap.isOpened():
             # Escreve na imagem a placa e o ID do objeto rastreado
             if track_id in tracked:
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
-                cv2.putText(result_img, f"ID {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (10, 10,255), 2)
+                cv2.putText(result_img, f"ID {track_id} : {tracked[track_id]}", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (10, 10,255), 3)
                 if not (os.path.isfile(f'./plates_extracted/{tracked[track_id]}' + '.png')):
                     cv2.imwrite(f'./plates_extracted/{tracked[track_id]}' + '.png', result_img)
                 #cv2.waitKey(0)
             else:
-                cv2.putText(result_img, f"ID {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                cv2.putText(result_img, f"ID {track_id} : ", (xmin + 10, ymin + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
                 cv2.rectangle(result_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
 
 
