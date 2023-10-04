@@ -7,6 +7,8 @@ import pytesseract
 from pytesseract import Output
 from sort.tracker import SortTracker
 
+from segment import rotate_image
+
 net_vehicle = cv2.dnn.readNet('./model/vehicle_novo.onnx')
 net_plate = cv2.dnn.readNet('./model/placa.onnx')
 WIDTH =  640
@@ -130,12 +132,14 @@ def add_tracked (track_id, plate):
     tracked[track_id] = plate
 
 def extract_plate(frame):
-    
+    '''
     img = cv2.resize(frame, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret, img = cv2.threshold(img, 70, 255, cv2.THRESH_BINARY)
-    img = cv2.GaussianBlur(img, (5,5),0)
-
+    img = cv2.GaussianBlur(img, (5,5),0)'''
+    cv2.imshow('antes', frame)
+    cv2.waitKey(0)
+    img = rotate_image(frame.copy())
     #-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
     #saida = pytesseract.image_to_string(img, lang='eng', config=" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     
@@ -143,24 +147,32 @@ def extract_plate(frame):
     #if len(formatted) == 7:
     #    print(formatted)
     #    return formatted
-        
-    saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-    print('extract_plate:' , saida["text"])    
-    for i in range(len(saida["text"])):
-        if int(saida["conf"][i]) >= 0:
+    if img is not None:        
 
-            formatted = ''.join(e for e in saida["text"][i] if e.isalnum() or e == '-')
-            if len(formatted) == 7:
-                print(formatted, saida["conf"][i])
-                return formatted
-                
+        saida = pytesseract.image_to_data(img, lang='eng', output_type=Output.DICT, config=" --oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890\\'")
+        print('extract_plate:' , saida["text"])    
+        cv2.imshow('frame', img)
+        cv2.waitKey(0)    
+        for i in range(len(saida["text"])):
+            if int(saida["conf"][i]) >= 0:
+
+                formatted = ''.join(e for e in saida["text"][i] if e.isalnum() or e == '-')
+                if len(formatted) == 7:
+                    print(formatted, saida["conf"][i])
+                    return formatted
+                elif len(formatted) > 7:
+                    print(formatted, saida["conf"][i])
+                    return formatted
+                    
+        cv2.imshow('janel', img)
+        cv2.waitKey(0)
     return None
 
 def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
 
-video_path = './videos/w2.mp4'
+video_path = './images/6.jpg'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0
@@ -170,20 +182,24 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-    #frame = corrigir_orientacao(frame)
+    
+    frame = corrigir_orientacao(frame)
+    cv2.imshow('frame', frame)
+    cv2.waitKey(0)
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
-
     if detections_for_sort != []:
         
         dets = np.array(detections_for_sort)
         online_targets = tracker.update(dets, None)
+        
         for d in online_targets:
             xmin, ymin, xmax, ymax, track_id, _, _ = map(int, d)
 
             if not is_tracked(track_id):
                 plate_images = yolo_prediction_plate(result_img[ymin:ymax, xmin:xmax], net_plate)
                 for plate_img in plate_images:
+                    
                     plate = extract_plate(frame=plate_img)
                     if plate is not None:
                         add_tracked(track_id, plate)  # Adiciona o objeto rastreado

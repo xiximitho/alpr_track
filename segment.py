@@ -164,7 +164,7 @@ def rotate_image(frame):
         for d in r:
             #cv2.drawContours(temp_result, d['contour'], -1, (255, 255, 255))
             cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x']+d['w'], d['y']+d['h']), color=(255, 255, 255), thickness=2)    
-
+    
     #Rotacionar
     PLATE_WIDTH_PADDING = 1.3 # 1.3
     PLATE_HEIGHT_PADDING = 1.5 # 1.5
@@ -208,14 +208,18 @@ def rotate_image(frame):
         
         if img_cropped.shape[1] / img_cropped.shape[0] < MIN_PLATE_RATIO or img_cropped.shape[1] / img_cropped.shape[0] < MIN_PLATE_RATIO > MAX_PLATE_RATIO:
             continue
-        
+        cv2.imshow('ulssstmo', img_cropped)
+        cv2.waitKey(0)
         plate_imgs.append(img_cropped)
         plate_infos.append({
             'x': int(plate_cx - plate_width / 2),
             'y': int(plate_cy - plate_height / 2),
             'w': int(plate_width),
             'h': int(plate_height)
-        })        
+        })   
+
+        cv2.imshow('asdasd', img_cropped)
+        cv2.waitKey(0)     
 
     longest_idx, longest_text = -1, 0
     plate_chars = []
@@ -256,4 +260,6 @@ def rotate_image(frame):
 
         img = cv2.bitwise_not(img_result)
         
+        cv2.imshow('ulitmo', img)
+        cv2.waitKey(0)
         return img
