@@ -147,9 +147,6 @@ def extract_plate(frame):
                 if len(formatted) == 7:
                     print(formatted, saida["conf"][i])
                     return formatted
-                elif len(formatted) > 7:
-                    print(formatted, saida["conf"][i])
-                    return formatted
                     
     return None
 
@@ -157,7 +154,7 @@ def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
 
-video_path = './images/funciona_1.jpg'
+video_path = './images/funciona_4.jpg'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0

@@ -4,27 +4,28 @@ import numpy as np
 from PIL import Image
 
 
-def find_chars(contour_list):
+def order_chars(contour_list):
     num_contours = len(contour_list)
     matched_result_idx = []  # Lista para armazenar índices de contornos correspondentes
     
     # Loop sobre todos os contornos
     for i in range(num_contours):
-        matched_contours_idx = list(range(i, num_contours))  # Inicie com todos os contornos subsequentes
+        matched_contours_idx = list(range(i, num_contours))  # Inicie com todos os contornos
         matched_result_idx.append(matched_contours_idx)  # Adicione a lista de índices de contornos correspondentes
-    
-    return matched_result_idx  # Retorna a lista de índices de contornos correspondentes
+
+    if len(matched_result_idx) == 0:
+        return None  # Não foi possível encontrar duas seleções extremas de caracteres da placa
+    else:
+        matched_result_idx = sorted((contour_list[i] for i in matched_result_idx[0]), key=lambda x: x['cx'])
+        return matched_result_idx
 
 
 def rotate_image(frame):
-    cv2.imshow('original', frame)
-    cv2.waitKey(0)
+    
     img_ori = frame.copy()
     height, width, _ = img_ori.shape
 
     gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
-    cv2.imshow('cinza', gray)
-    cv2.waitKey(0)
 
     # Binarização adaptativa
     img_thresh = cv2.adaptiveThreshold(
@@ -35,10 +36,8 @@ def rotate_image(frame):
         blockSize=19,
         C=9
     )
-    cv2.imshow('binarizacao_adaptativa', img_thresh)
-    cv2.waitKey(0)
 
-    # Encontre contornos na imagem binarizada
+    # Busca de contornos na imagem binarizada
     contours, _ = cv2.findContours(
         img_thresh,
         mode=cv2.RETR_LIST,
@@ -47,8 +46,7 @@ def rotate_image(frame):
 
     possible_contours = []
 
-    # Filtre os contornos com base em critérios de área e proporção
-    img_thresh_contorno = img_ori.copy()
+    # Filtro entre os contornos com base em critérios de área e proporção
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         
@@ -65,62 +63,53 @@ def rotate_image(frame):
                 'cx': x + (w / 2),
                 'cy': y + (h / 2)
             })
-
-            cv2.rectangle(img_thresh_contorno,(x,y),(x+w,y+h),(0,255,0),1)
-
             
-    cv2.imshow('contorno', img_thresh_contorno)
-    cv2.waitKey(0)
-    
-    result_idx = find_chars(possible_contours)
-    if len(result_idx) == 0:
-        return None  # Não foi possível encontrar uma placa
+    sorted_chars = order_chars(possible_contours)
+    # Classificação dos caracteres correspondentes pela posição central x
+    if sorted_chars is not None:
+        # Calculo das coordenadas do centro da placa para a rotação
+        plate_cx = (sorted_chars[0]['cx'] + sorted_chars[-1]['cx']) / 2
+        plate_cy = (sorted_chars[0]['cy'] + sorted_chars[-1]['cy']) / 2
 
-    # Classifique os caracteres correspondentes pela posição x
-    sorted_chars = sorted((possible_contours[i] for i in result_idx[0]), key=lambda x: x['cx'])
+        # Cálculo do angulo de rotação da placa
+        triangle_height = sorted_chars[-1]['cy'] - sorted_chars[0]['cy']
+        triangle_hypotenuse = np.linalg.norm(
+            np.array([sorted_chars[0]['cx'], sorted_chars[0]['cy']]) -
+            np.array([sorted_chars[-1]['cx'], sorted_chars[-1]['cy']])
+        )
+        #Conversão de radianos para graus.
+        angle = np.degrees(np.arcsin(triangle_height / triangle_hypotenuse))
 
-    # Calcule as coordenadas do centro da placa para a rotação
-    plate_cx = (sorted_chars[0]['cx'] + sorted_chars[-1]['cx']) / 2
-    plate_cy = (sorted_chars[0]['cy'] + sorted_chars[-1]['cy']) / 2
+        # Matriz de rotação
+        rotation_matrix = cv2.getRotationMatrix2D(center=(plate_cx, plate_cy), angle=angle, scale=1.0)
 
-    # Calcule a largura da placa
-    plate_width = (sorted_chars[-1]['x'] + sorted_chars[-1]['w'] - sorted_chars[0]['x']) * 1.05
+        # Rotação da imagem original
+        img_rotated = cv2.warpAffine(gray, M=rotation_matrix, dsize=(width, height))
 
-    # Calcule a altura da placa
-    sum_height = sum(d['h'] for d in sorted_chars)
-    plate_height = int(sum_height / len(sorted_chars) * 1.3)
 
-    # Calcule o ângulo de rotação da placa
-    triangle_height = sorted_chars[-1]['cy'] - sorted_chars[0]['cy']
-    triangle_hypotenuse = np.linalg.norm(
-        np.array([sorted_chars[0]['cx'], sorted_chars[0]['cy']]) -
-        np.array([sorted_chars[-1]['cx'], sorted_chars[-1]['cy']])
-    )
-    angle = np.degrees(np.arcsin(triangle_height / triangle_hypotenuse))
+        cv2.imshow('rotacionada', img_rotated)
+        cv2.waitKey(0)
 
-    # Crie uma matriz de rotação
-    rotation_matrix = cv2.getRotationMatrix2D(center=(plate_cx, plate_cy), angle=angle, scale=1.0)
 
-    # Rotação da imagem original
-    img_rotated = cv2.warpAffine(gray, M=rotation_matrix, dsize=(width, height))
-    cv2.imshow('rotacionada', img_rotated)
-    cv2.waitKey(0)
+        # Calculo de largura da placa
+        plate_width = (sorted_chars[-1]['x'] + sorted_chars[-1]['w'] - sorted_chars[0]['x']) * 1.15
 
-    # Recorte a região da placa da imagem rotacionada
-    img_cropped = cv2.getRectSubPix(
-        img_rotated,
-        patchSize=(int(plate_width), int(plate_height)),
-        center=(int(plate_cx), int(plate_cy))
-    )
-    cv2.imshow('cortada', img_cropped)
-    cv2.waitKey(0)
+        # Calculo da altura da placa
+        sum_height = sum(d['h'] for d in sorted_chars)
+        plate_height = int(sum_height / len(sorted_chars) * 1.3)
 
-    # Redimensione a imagem recortada
-    img_resized = cv2.resize(img_cropped, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+        # Recorte a região da placa da imagem rotacionada
+        img_cropped = cv2.getRectSubPix(
+            img_rotated,
+            patchSize=(int(plate_width), int(plate_height)),
+            center=(int(plate_cx), int(plate_cy))
+        )
+        # Redimensione a imagem recortada
+        img_resized = cv2.resize(img_cropped, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
 
-    cv2.imshow('resized', img_resized)
-    cv2.waitKey(0)
-    return img_resized
+        return img_resized
+
+    return None
 
     img_rotated = cv2.resize(img_cropped, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
     ret, img = cv2.threshold(img_rotated, 70, 255, cv2.THRESH_BINARY)
