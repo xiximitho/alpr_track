@@ -132,9 +132,10 @@ def add_tracked (track_id, plate):
     tracked[track_id] = plate
 
 def extract_plate(frame):
-    
+    cv2.imshow("Placa", frame)
+    cv2.waitKey(0)
     img = rotate_image(frame=frame)
-    tess_config = r' --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
+    tess_config = r" --oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
     if img is not None:        
 
@@ -147,6 +148,7 @@ def extract_plate(frame):
                 if len(formatted) == 7:
                     print(formatted, saida["conf"][i])
                     return formatted
+                
                     
     return None
 
@@ -154,7 +156,7 @@ def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
 
-video_path = './images/funciona_4.jpg'
+video_path = './videos/untitled.mp4'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0
@@ -165,7 +167,8 @@ while cap.isOpened():
     if not ret:
         break
     
-    frame = corrigir_orientacao(frame)
+    #frame = corrigir_orientacao(frame)
+
     # Chamar a função de predição do YOLO para processar o quadro
     result_img, detections_for_sort, track_id_counter = yolo_predictions(frame, net_vehicle, track_id_counter)
     if detections_for_sort != []:
@@ -198,7 +201,7 @@ while cap.isOpened():
 
 
     cv2.imshow('main', result_img)
-    #cv2.waitKey(0)
+    cv2.waitKey(0)
     # Pressione 'q' para sair do loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

@@ -45,15 +45,16 @@ def rotate_image(frame):
     )
 
     possible_contours = []
-
+    #image = gray.copy()
     # Filtro entre os contornos com base em critérios de área e proporção
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         
         area = w * h
         ratio = w / h
-
-        if area > 75 and w > 2 and h > 5 and 0.0 < ratio < 0.9:
+        
+        if area > 50 and w > 2 and h > 8 and 0.0 < ratio < 0.9:
+            print(area, w, h, ratio)
             possible_contours.append({
                 'contour': contour,
                 'x': x,
@@ -63,7 +64,11 @@ def rotate_image(frame):
                 'cx': x + (w / 2),
                 'cy': y + (h / 2)
             })
+            #cv2.rectangle(image, (x, y), (x + w, y + h), (255, 255, 0), 2)
+
             
+    #cv2.imshow("aklsdj", image)                
+    #cv2.waitKey(0)
     sorted_chars = order_chars(possible_contours)
     # Classificação dos caracteres correspondentes pela posição central x
     if sorted_chars is not None:
@@ -86,11 +91,6 @@ def rotate_image(frame):
         # Rotação da imagem original
         img_rotated = cv2.warpAffine(gray, M=rotation_matrix, dsize=(width, height))
 
-
-        cv2.imshow('rotacionada', img_rotated)
-        cv2.waitKey(0)
-
-
         # Calculo de largura da placa
         plate_width = (sorted_chars[-1]['x'] + sorted_chars[-1]['w'] - sorted_chars[0]['x']) * 1.15
 
@@ -107,6 +107,8 @@ def rotate_image(frame):
         # Redimensione a imagem recortada
         img_resized = cv2.resize(img_cropped, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
 
+        cv2.imshow('resized_rotacionada', img_resized)
+        cv2.waitKey(0)
         return img_resized
 
     return None
