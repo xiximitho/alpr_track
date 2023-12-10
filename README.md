@@ -22,7 +22,7 @@ docker run -v ./:/app -p 8080:8080 --env="DISPLAY" --net=host nome_da_sua_imagem
 ```
 Caso ocorra erro para mostrar o display, tente executar
 ```bash
-export DISPLAY=:0\m
+export DISPLAY=:0
 xhost +local:docker 
 ```
 
