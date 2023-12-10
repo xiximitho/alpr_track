@@ -1,5 +1,5 @@
 # alpr_track
-####  Trabalho de Conclusão de Curso: Protótipo para Controle de Entrada e Saída de Veículos Utilizando Reconhecimento de Placas Veiculares
+####  Protótipo para Reconhecimento de Placas Veiculares Utilizando Redes Neurais
 
 ## Introdução
 
