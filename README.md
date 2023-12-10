@@ -5,6 +5,22 @@
 
 Neste trabalho de conclusão de curso, abordamos o desenvolvimento de um sistema de reconhecimento de placas veiculares utilizando as tecnologias Tesseract, OpenCV e YOLO em Python. O objetivo foi criar um sistema para identificar e extrair informações de placas de veículos a partir de imagens.
 
+
+## Utilização 
+Construir a imagem do docker
+```bash
+docker build -t nome_da_sua_imagem .
+```
+
+Rodar a imagem com passtrough do display, para mostrar as imagens pelo OpenCV: 
+
+```bash
+cd projeto
+```
+```bash
+docker run -v ./:/app -p 8080:8080 --env="DISPLAY" --net=host cvpy11:latest
+```
+
 ## Tecnologias Utilizadas
 
 - [Tesseract](https://github.com/tesseract-ocr/tesseract): Uma biblioteca de reconhecimento óptico de caracteres.
@@ -50,4 +66,3 @@ cap = cv2.VideoCapture(video_path)
 ```bash
 python main.py
 ```
-

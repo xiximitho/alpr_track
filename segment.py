@@ -53,7 +53,7 @@ def rotate_image(frame):
         area = w * h
         ratio = w / h
         
-        if area > 50 and w > 2 and h > 8 and 0.0 < ratio < 0.9:
+        if area > 75 and w > 2 and h > 8 and 0.0 < ratio < 0.9:
             print(area, w, h, ratio)
             possible_contours.append({
                 'contour': contour,

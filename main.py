@@ -156,7 +156,7 @@ def corrigir_orientacao(imagem):
     imagem_corrigida = cv2.rotate(imagem, cv2.ROTATE_90_CLOCKWISE)
     return imagem_corrigida
 
-video_path = './videos/exemplo.mp4'
+video_path = './videos/exemplo_f_1.mp4'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
 track_id_counter = 0
