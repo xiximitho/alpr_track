@@ -18,7 +18,12 @@ Rodar a imagem com passthrough do display, para mostrar as imagens pelo OpenCV:
 cd projeto
 ```
 ```bash
-docker run -v ./:/app -p 8080:8080 --env="DISPLAY" --net=host cvpy11:latest
+docker run -v ./:/app -p 8080:8080 --env="DISPLAY" --net=host nome_da_sua_imagem:tag
+```
+Caso ocorra erro para mostrar o display, tente executar
+```bash
+export DISPLAY=:0\m
+xhost +local:docker 
 ```
 
 ## Tecnologias Utilizadas
