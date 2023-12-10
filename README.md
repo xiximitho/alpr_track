@@ -12,7 +12,7 @@ Construir a imagem do docker
 docker build -t nome_da_sua_imagem .
 ```
 
-Rodar a imagem com passtrough do display, para mostrar as imagens pelo OpenCV: 
+Rodar a imagem com passthrough do display, para mostrar as imagens pelo OpenCV: 
 
 ```bash
 cd projeto
@@ -47,7 +47,7 @@ Antes de usar utilizar o Tesseract, são utilizados modelos treinados do YOLO pa
 <img src='./images/md/car1.png' width=450> 
 
 
-Para utilizar, siga os passos abaixo:
+Para utilizar fora do docker, siga os passos abaixo:
 
 1. Instalar os requisitos do requirements.txt no seu ambiente python, sugiro uma virtual env https://docs.python.org/pt-br/3/library/venv.html
 ```bash
@@ -56,11 +56,14 @@ pip install -r requirements.txt
 ```
 
 2. E após, alterar o programa passando sua imagem/video no arquivo main.py na variavel video_path.
-
 ```python
 video_path = './videos/yourvideo_or_image.mp4'
 tracker = SortTracker()
 cap = cv2.VideoCapture(video_path)
+```
+Ou adicionar a leitura de camera pelo OpenCV:
+```bash
+cv2.VideoCapture(0)
 ```
 3. E por fim chamar a execução do programa
 ```bash
