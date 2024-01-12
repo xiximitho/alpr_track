@@ -74,3 +74,5 @@ cv2.VideoCapture(0)
 ```bash
 python main.py
 ```
+
+
